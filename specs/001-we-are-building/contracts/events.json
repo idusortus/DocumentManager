@@ -1,0 +1,490 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document Processing System Events",
+  "description": "Event schemas for document processing pipeline communication",
+  
+  "definitions": {
+    "BaseEvent": {
+      "type": "object",
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for this event"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Type of event"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the event occurred"
+        },
+        "source": {
+          "type": "string",
+          "description": "Service that generated the event"
+        },
+        "correlationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Correlation ID for tracing related events"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "User associated with the event (if applicable)"
+        }
+      },
+      "required": ["eventId", "eventType", "timestamp", "source"]
+    },
+
+    "DocumentUploadedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "document.uploaded"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "fileSizeBytes": {
+                  "type": "integer"
+                },
+                "contentType": {
+                  "type": "string"
+                },
+                "ownerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "blobStoragePath": {
+                  "type": "string"
+                }
+              },
+              "required": ["documentId", "fileName", "fileSizeBytes", "contentType", "ownerId", "blobStoragePath"]
+            }
+          }
+        }
+      ]
+    },
+
+    "ProcessingJobStartedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "processing.job.started"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "configuration": {
+                  "type": "object",
+                  "description": "Processing configuration parameters"
+                },
+                "stageCount": {
+                  "type": "integer",
+                  "description": "Number of stages in the pipeline"
+                }
+              },
+              "required": ["jobId", "documentId", "stageCount"]
+            }
+          }
+        }
+      ]
+    },
+
+    "ProcessingStageCompletedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "processing.stage.completed"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "stageId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "stageName": {
+                  "type": "string"
+                },
+                "orderIndex": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["Completed", "Failed", "Skipped"]
+                },
+                "duration": {
+                  "type": "string",
+                  "format": "duration"
+                },
+                "output": {
+                  "type": "object",
+                  "description": "Stage output data"
+                },
+                "errorMessage": {
+                  "type": "string",
+                  "description": "Error message if status is Failed"
+                },
+                "nextStageRequiresUserInteraction": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["jobId", "stageId", "stageName", "orderIndex", "status", "duration"]
+            }
+          }
+        }
+      ]
+    },
+
+    "ProcessingStageUserInteractionRequiredEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "processing.stage.user_interaction_required"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "stageId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "stageName": {
+                  "type": "string"
+                },
+                "interactionType": {
+                  "type": "string",
+                  "description": "Type of user interaction needed"
+                },
+                "promptMessage": {
+                  "type": "string",
+                  "description": "Message to display to user"
+                },
+                "inputSchema": {
+                  "type": "object",
+                  "description": "JSON schema for expected user input"
+                },
+                "timeoutMinutes": {
+                  "type": "integer",
+                  "description": "Minutes before interaction times out"
+                }
+              },
+              "required": ["jobId", "stageId", "stageName", "interactionType", "promptMessage"]
+            }
+          }
+        }
+      ]
+    },
+
+    "ProcessingJobCompletedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "processing.job.completed"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["Completed", "Failed", "Cancelled"]
+                },
+                "totalDuration": {
+                  "type": "string",
+                  "format": "duration"
+                },
+                "stagesCompleted": {
+                  "type": "integer"
+                },
+                "errorMessage": {
+                  "type": "string",
+                  "description": "Error message if status is Failed"
+                },
+                "results": {
+                  "type": "object",
+                  "description": "Final processing results and metadata"
+                }
+              },
+              "required": ["jobId", "documentId", "status", "totalDuration", "stagesCompleted"]
+            }
+          }
+        }
+      ]
+    },
+
+    "DocumentSharedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "document.shared"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "shareLinkId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "sharedById": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "accessLevel": {
+                  "type": "string",
+                  "enum": ["ViewOnly", "Download"]
+                },
+                "recipientEmail": {
+                  "type": "string",
+                  "format": "email",
+                  "description": "Email of recipient (if specified)"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the share link expires"
+                }
+              },
+              "required": ["documentId", "shareLinkId", "sharedById", "accessLevel"]
+            }
+          }
+        }
+      ]
+    },
+
+    "DocumentAccessedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "document.accessed"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "accessType": {
+                  "type": "string",
+                  "enum": ["view", "download", "share_link_view", "share_link_download"]
+                },
+                "shareLinkId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Share link ID if accessed via share link"
+                },
+                "ipAddress": {
+                  "type": "string"
+                },
+                "userAgent": {
+                  "type": "string"
+                }
+              },
+              "required": ["documentId", "accessType", "ipAddress"]
+            }
+          }
+        }
+      ]
+    },
+
+    "DocumentDeletedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "document.deleted"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "ownerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "deletedById": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "isHardDelete": {
+                  "type": "boolean",
+                  "description": "True if permanently deleted, false if soft deleted"
+                }
+              },
+              "required": ["documentId", "fileName", "ownerId", "deletedById", "isHardDelete"]
+            }
+          }
+        }
+      ]
+    },
+
+    "SystemConfigurationChangedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "system.configuration.changed"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "changedBy": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "configurationKey": {
+                  "type": "string"
+                },
+                "oldValue": {
+                  "description": "Previous configuration value"
+                },
+                "newValue": {
+                  "description": "New configuration value"
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Reason for the change"
+                }
+              },
+              "required": ["changedBy", "configurationKey", "newValue"]
+            }
+          }
+        }
+      ]
+    },
+
+    "BackupCompletedEvent": {
+      "allOf": [
+        { "$ref": "#/definitions/BaseEvent" },
+        {
+          "type": "object",
+          "properties": {
+            "eventType": {
+              "const": "system.backup.completed"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "backupId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "backupType": {
+                  "type": "string",
+                  "enum": ["full", "incremental", "transaction_log"]
+                },
+                "startTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endTime": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "sizeBytes": {
+                  "type": "integer"
+                },
+                "location": {
+                  "type": "string",
+                  "description": "Backup storage location"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["success", "failed", "partial"]
+                },
+                "errorMessage": {
+                  "type": "string",
+                  "description": "Error message if status is failed"
+                }
+              },
+              "required": ["backupId", "backupType", "startTime", "endTime", "location", "status"]
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "oneOf": [
+    { "$ref": "#/definitions/DocumentUploadedEvent" },
+    { "$ref": "#/definitions/ProcessingJobStartedEvent" },
+    { "$ref": "#/definitions/ProcessingStageCompletedEvent" },
+    { "$ref": "#/definitions/ProcessingStageUserInteractionRequiredEvent" },
+    { "$ref": "#/definitions/ProcessingJobCompletedEvent" },
+    { "$ref": "#/definitions/DocumentSharedEvent" },
+    { "$ref": "#/definitions/DocumentAccessedEvent" },
+    { "$ref": "#/definitions/DocumentDeletedEvent" },
+    { "$ref": "#/definitions/SystemConfigurationChangedEvent" },
+    { "$ref": "#/definitions/BackupCompletedEvent" }
+  ]
+}

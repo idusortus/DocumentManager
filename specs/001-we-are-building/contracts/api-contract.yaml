@@ -1,0 +1,804 @@
+openapi: 3.0.3
+info:
+  title: Document Processing System API
+  description: |
+    Digital document processing system with multi-stage pipeline processing,
+    user management, and document sharing capabilities.
+    
+    ## Authentication
+    All endpoints require Microsoft Entra ID OAuth2 authentication unless otherwise specified.
+    
+    ## Rate Limiting
+    - Document uploads: 100 requests per hour per user
+    - General API: 1000 requests per hour per user
+    
+  version: 1.0.0
+  contact:
+    name: Document Processing System
+    email: admin@documentprocessor.com
+
+servers:
+  - url: https://api.documentprocessor.com/v1
+    description: Production server
+  - url: https://staging-api.documentprocessor.com/v1
+    description: Staging server
+
+security:
+  - oauth2: []
+
+paths:
+  # Authentication & User Management
+  /auth/login:
+    post:
+      summary: Initiate OAuth2 login with Microsoft Entra ID
+      tags: [Authentication]
+      security: []
+      responses:
+        '302':
+          description: Redirect to Entra ID login
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+
+  /auth/callback:
+    get:
+      summary: OAuth2 callback from Microsoft Entra ID
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /users/me:
+    get:
+      summary: Get current user profile
+      tags: [Users]
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /users:
+    get:
+      summary: List users (Admin only)
+      tags: [Users]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+
+  # Document Management
+  /documents:
+    get:
+      summary: List user's documents
+      tags: [Documents]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DocumentStatus'
+        - name: search
+          in: query
+          description: Search in document names and metadata
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentList'
+
+    post:
+      summary: Upload a new document
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Document file to upload
+                metadata:
+                  type: object
+                  description: Optional metadata for the document
+              required:
+                - file
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          description: Invalid file or size limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /documents/{documentId}:
+    get:
+      summary: Get document details
+      tags: [Documents]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          description: Document not found
+
+    delete:
+      summary: Delete a document
+      tags: [Documents]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Document deleted successfully
+        '404':
+          description: Document not found
+
+  /documents/{documentId}/download:
+    get:
+      summary: Download document file
+      tags: [Documents]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Document not found
+
+  # Document Processing
+  /documents/{documentId}/processing:
+    get:
+      summary: Get processing job status
+      tags: [Processing]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Processing job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+
+    post:
+      summary: Start or restart document processing
+      tags: [Processing]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                configuration:
+                  type: object
+                  description: Custom processing configuration
+      responses:
+        '202':
+          description: Processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJob'
+
+  /documents/{documentId}/processing/interact:
+    post:
+      summary: Provide user interaction for processing stage
+      tags: [Processing]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stageId:
+                  type: string
+                  format: uuid
+                userInput:
+                  type: object
+                  description: User input for the processing stage
+              required:
+                - stageId
+                - userInput
+      responses:
+        '200':
+          description: User interaction processed
+        '400':
+          description: Invalid input or stage not waiting for interaction
+
+  # Document Sharing
+  /documents/{documentId}/shares:
+    get:
+      summary: List document share links
+      tags: [Sharing]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of share links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShareLink'
+
+    post:
+      summary: Create document share link
+      tags: [Sharing]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShareLinkRequest'
+      responses:
+        '201':
+          description: Share link created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLink'
+
+  /shares/{accessToken}:
+    get:
+      summary: Access shared document
+      tags: [Sharing]
+      security: []
+      parameters:
+        - name: accessToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared document access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedDocumentAccess'
+        '404':
+          description: Invalid or expired share link
+
+  # System Administration
+  /admin/configuration:
+    get:
+      summary: Get system configuration (Admin only)
+      tags: [Administration]
+      responses:
+        '200':
+          description: System configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfiguration'
+
+    put:
+      summary: Update system configuration (Admin only)
+      tags: [Administration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemConfiguration'
+      responses:
+        '200':
+          description: Configuration updated
+
+  /admin/audit-logs:
+    get:
+      summary: Get audit logs (Admin only)
+      tags: [Administration]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogList'
+
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
+          tokenUrl: https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
+          scopes:
+            read: Read access to documents
+            write: Write access to documents
+            admin: Administrative access
+
+  schemas:
+    # Authentication
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: "Bearer"
+        expiresIn:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+
+    # User Management
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entraId:
+          type: string
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        createdAt:
+          type: string
+          format: date-time
+        lastLoginAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+
+    UserRole:
+      type: string
+      enum: [Admin, Standard, ReadOnly]
+
+    UserList:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Document Management
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        originalFileName:
+          type: string
+        fileSizeBytes:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        status:
+          $ref: '#/components/schemas/DocumentStatus'
+        uploadedAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          type: object
+        ownerId:
+          type: string
+          format: uuid
+
+    DocumentStatus:
+      type: string
+      enum: [Uploaded, Processing, Processed, Failed, PendingUser]
+
+    DocumentList:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Processing
+    ProcessingJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ProcessingStatus'
+        currentStageIndex:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        requiresUserInteraction:
+          type: boolean
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineStage'
+
+    ProcessingStatus:
+      type: string
+      enum: [Queued, Running, PendingUser, Completed, Failed, Cancelled]
+
+    PipelineStage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        stageName:
+          type: string
+        orderIndex:
+          type: integer
+        status:
+          $ref: '#/components/schemas/StageStatus'
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        duration:
+          type: string
+          format: duration
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        requiresUserInteraction:
+          type: boolean
+
+    StageStatus:
+      type: string
+      enum: [Pending, Running, Completed, Failed, Skipped, PendingUser]
+
+    # Sharing
+    ShareLink:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        accessToken:
+          type: string
+        accessLevel:
+          $ref: '#/components/schemas/ShareAccessLevel'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        accessCount:
+          type: integer
+        recipientEmail:
+          type: string
+          format: email
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    ShareAccessLevel:
+      type: string
+      enum: [ViewOnly, Download]
+
+    CreateShareLinkRequest:
+      type: object
+      properties:
+        accessLevel:
+          $ref: '#/components/schemas/ShareAccessLevel'
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        recipientEmail:
+          type: string
+          format: email
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      required:
+        - accessLevel
+
+    SharedDocumentAccess:
+      type: object
+      properties:
+        document:
+          type: object
+          properties:
+            fileName:
+              type: string
+            fileSizeBytes:
+              type: integer
+            contentType:
+              type: string
+            metadata:
+              type: object
+        shareLink:
+          type: object
+          properties:
+            accessLevel:
+              $ref: '#/components/schemas/ShareAccessLevel'
+            description:
+              type: string
+
+    # Administration
+    SystemConfiguration:
+      type: object
+      properties:
+        maxFileSizeMB:
+          type: integer
+          default: 10
+        allowedFileTypes:
+          type: array
+          items:
+            type: string
+          default: ["pdf", "docx", "txt"]
+        retentionPolicyDays:
+          type: integer
+          default: 2555  # 7 years
+        backupFrequencyHours:
+          type: integer
+          default: 24
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+          nullable: true
+        details:
+          type: object
+        ipAddress:
+          type: string
+        userAgent:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          $ref: '#/components/schemas/AuditLevel'
+
+    AuditLevel:
+      type: string
+      enum: [Info, Warning, Error, Security]
+
+    AuditLogList:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Common
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+      required:
+        - code
+        - message
