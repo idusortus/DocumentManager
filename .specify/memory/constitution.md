@@ -1,50 +1,43 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# DocFlow Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. The Specification is the Source of Truth (NON-NEGOTIABLE)
+All work begins with a specification that defines the **what** and the **why**, not the **how**. The specification's acceptance criteria form the basis for our tests. The workflow is absolute: Specification Written → Specification Approved → Failing Tests Implemented → Code Implemented to Pass Tests. An approved specification is the contract with stakeholders.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Vertical Slices as the Quantum of Change
+Every feature is a self-contained Vertical Slice. A slice is the smallest deployable unit of business value, encapsulating everything from API endpoints to data access. This ensures that features are delivered cohesively and can be developed, tested, and maintained with minimal cross-feature dependencies.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Modules Communicate via Asynchronous Events
+For inter-module or cross-slice communication, we will prioritize asynchronous, event-based messaging over direct, synchronous calls. This decouples our modules, enhances resilience, and provides the foundation for scaling individual components independently. Direct calls are only permissible for read-only queries that do not mutate state in another module.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Contracts, Not Concretions
+Modules expose their capabilities through well-defined, explicit contracts. These are not just code interfaces but formal agreements like OpenAPI specifications for APIs or published message schemas for events. Consumers of a module MUST only depend on these public contracts, never on internal implementation details.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Security is Non-Negotiable
+Security is not a feature or an afterthought; it is a foundational requirement. We will adhere to the principle of least privilege for all system and user interactions. All data will be treated as sensitive by default, with encryption at rest and in transit. Security considerations must be addressed in every specification.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Observability by Default
+All services and pipeline stages MUST be designed with observability in mind. This includes structured logging for all significant events, application metrics for performance monitoring (e.g., processing time, error rates), and distributed tracing to follow a request through the system. A feature is not "done" until it is observable.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VII. Pragmatic Simplicity (Justify Complexity)
+Always choose the simplest solution that meets the specification's requirements (YAGNI). If a more complex solution is proposed, it must be explicitly justified in the specification by demonstrating how the simpler alternative is insufficient for current or near-future, concrete requirements.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development & Deployment
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Automated, Repeatable Deployments
+The only path to any environment is through our automated CI/CD pipeline. All builds must be immutable and containerized. The pipeline will enforce all quality gates, including security scans, static analysis, and the execution of the full test suite. Manual deployments are strictly forbidden.
+
+### Definition of "Done"
+A feature or slice is considered "done" only when:
+1.  It fully implements its approved specification.
+2.  All automated tests (unit, integration, and contract) are passing.
+3.  It meets all security and observability requirements defined in this constitution.
+4.  Its documentation and specifications have been updated.
+5.  The implementation has been peer-reviewed and merged.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution is the supreme governing document for all technical design and development. All specifications and reviews must explicitly validate compliance with its principles. Any proposal to amend this constitution requires a formal write-up, a review by the technical leadership, and a clear transition plan if the change impacts existing architecture.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.1.0 | **Ratified**: 2025-09-17 | **Last Amended**: 2025-09-17
