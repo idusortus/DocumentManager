@@ -14,6 +14,12 @@ For inter-module or cross-slice communication, we will prioritize asynchronous, 
 ### IV. Contracts, Not Concretions
 Modules expose their capabilities through well-defined, explicit contracts. These are not just code interfaces but formal agreements like OpenAPI specifications for APIs or published message schemas for events. Consumers of a module MUST only depend on these public contracts, never on internal implementation details.
 
+**Event Contract Requirements:**
+- All event schemas must be formally defined (e.g., JSON Schema, Avro)
+- Schema evolution must maintain backward compatibility
+- Breaking changes require new event types or major version increments
+- Event contracts are subject to the same review process as API contracts
+
 ### V. Security is Non-Negotiable
 Security is not a feature or an afterthought; it is a foundational requirement. We will adhere to the principle of least privilege for all system and user interactions. All data will be treated as sensitive by default, with encryption at rest and in transit. Security considerations must be addressed in every specification.
 
@@ -22,6 +28,12 @@ All services and pipeline stages MUST be designed with observability in mind. Th
 
 ### VII. Pragmatic Simplicity (Justify Complexity)
 Always choose the simplest solution that meets the specification's requirements (YAGNI). If a more complex solution is proposed, it must be explicitly justified in the specification by demonstrating how the simpler alternative is insufficient for current or near-future, concrete requirements.
+
+**Complexity Hierarchy (in order of precedence):**
+1. Security requirements (Section V) always justify necessary complexity
+2. Observability requirements (Section VI) justify infrastructure complexity
+3. Contract compliance (Section IV) justifies interface complexity
+4. All other complexity must be explicitly justified against YAGNI principles
 
 ## Development & Deployment
 
@@ -32,12 +44,24 @@ The only path to any environment is through our automated CI/CD pipeline. All bu
 A feature or slice is considered "done" only when:
 1.  It fully implements its approved specification.
 2.  All automated tests (unit, integration, and contract) are passing.
+    - Contract tests must verify both API and event schema compliance
+    - Integration tests must validate asynchronous event flows end-to-end
 3.  It meets all security and observability requirements defined in this constitution.
-4.  Its documentation and specifications have been updated.
+4.  Its documentation and specifications have been updated to include:
+    - Updated API/event contracts
+    - Observability runbooks and alert definitions
 5.  The implementation has been peer-reviewed and merged.
 
 ## Governance
 
 This Constitution is the supreme governing document for all technical design and development. All specifications and reviews must explicitly validate compliance with its principles. Any proposal to amend this constitution requires a formal write-up, a review by the technical leadership, and a clear transition plan if the change impacts existing architecture.
 
-**Version**: 1.1.0 | **Ratified**: 2025-09-17 | **Last Amended**: 2025-09-17
+### Principle Conflict Resolution
+When constitutional principles appear to conflict during implementation:
+1. **Security (Section V)** takes precedence over simplicity concerns
+2. **Observability (Section VI)** requirements cannot be compromised for simplicity
+3. **Contract obligations (Section IV)** must be maintained even if more complex
+4. **Specification compliance (Section I)** overrides all other considerations
+5. When genuine conflicts arise, escalate to technical leadership for constitutional interpretation
+
+**Version**: 1.2.0 | **Ratified**: 2025-09-17 | **Last Amended**: 2025-09-17
