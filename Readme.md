@@ -75,5 +75,5 @@ The application will eventually need to accept files from external sources to al
 
 ```bash
 
-/plan the application uses dotnet 9: aspire project containing webapi, blazor, postgres. Microsoft Entra ID is used for user identity and access management.
+/plan the application uses dotnet 9: aspire project containing webapi, blazor, postgres. Microsoft Entra ID is used for user identity and access management. xUnit is used for testing.
 ```
