@@ -73,3 +73,7 @@ When constitutional principles appear to conflict during implementation:
 The application will eventually need to accept files from external sources to allow flexibility. Users could potentially email a document to our system or securely upload via FTP. Once a file is obtained by the document processing system it will be processed. There will be a default processing pipeline to begin with. It will be mult-stage and some stages will be long running. Some multi-stage pipelines may require user interaction in the middle of the otherwise automated processing pipeline.
 ```
 
+```bash
+
+/plan the application uses dotnet 9: aspire project containing webapi, blazor, postgres. Microsoft Entra ID is used for user identity and access management.
+```
